@@ -4,8 +4,7 @@ from pydantic import BaseModel,Field
 from fastapi.middleware.cors import CORSMiddleware
 import joblib
 import pandas as pd
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+
 
 app = FastAPI(title='HealthCare Model Is Running')
 
@@ -77,12 +76,20 @@ def predict(data: PatientData):
 
         return {
             "prediction": prediction.tolist(),
+        }
+# --- Move these to the very bottom of your app.py ---
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
+# Ensure these lines are NOT inside any other function or dictionary
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
 def index():
     return FileResponse('static/index.html')
+
+
+
            
         }
     except Exception as e:
