@@ -77,10 +77,3 @@ def index():
     return FileResponse('static/index.html')
 
 
-
-
-           
-        }
-    except Exception as e:
-        return {"error": str(e)}
-
