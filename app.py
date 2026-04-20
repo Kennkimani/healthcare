@@ -1,10 +1,11 @@
-
-from fastapi import FastAPI,HTTPException
-from pydantic import BaseModel,Field
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 import joblib
 import pandas as pd
-
+import os
 
 app = FastAPI(title='HealthCare Model Is Running')
 
@@ -15,12 +16,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-MODEL_PATH = "C:/Users/PC/3D Objects/healthcare project/model.pkl"
-# Load model + encoders
-model = joblib.load("model.pkl")
+# Use relative path for the cloud
+MODEL_PATH = "model.pkl"
+model = joblib.load(MODEL_PATH)
 
-
-#  NO target column here
 class PatientData(BaseModel):
     Name: str
     Age: float = Field(ge=0, le=120)
@@ -35,15 +34,9 @@ class PatientData(BaseModel):
     Admission_Type: str
     Medication: str
     Days_in_hospital: int
-    
-
-@app.get("/")
-def home():
-    return {'message':'READY TO MAKE PREDICTIONS?'}
 
 @app.post("/reload")
 def reload_model():
-    """Endpoint for Airflow to trigger a model refresh."""
     global model
     try:
         model = joblib.load(MODEL_PATH)
@@ -54,15 +47,14 @@ def reload_model():
 @app.post("/predict")
 def predict(data: PatientData):
     try:
-         # Convert input to DataFrame
         input_df = pd.DataFrame([{
-            "Name":data.Name,
+            "Name": data.Name,
             "Age": data.Age,
             "Gender": data.Gender,
             "Blood Type": data.Blood_Type,
             "Medical Condition": data.Medical_Condition,
-            "Doctor":data.Doctor,
-            "Hospital":data.Hospital,
+            "Doctor": data.Doctor,
+            "Hospital": data.Hospital,
             "Insurance Provider": data.Insurance_Provider,
             "Billing Amount": data.Billing_Amount,
             "Room Number": data.Room_Number,
@@ -71,22 +63,19 @@ def predict(data: PatientData):
             "Days_in_hospital": data.Days_in_hospital
         }])
 
-        # ✅ Predict using pipeline
         prediction = model.predict(input_df)
+        return {"prediction": prediction.tolist()}
+    except Exception as e:
+        return {"error": str(e)}
 
-        return {
-            "prediction": prediction.tolist(),
-        }
-# --- Move these to the very bottom of your app.py ---
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-
-# Ensure these lines are NOT inside any other function or dictionary
+# Static files and Frontend route
+# Make sure you have a folder named 'static' with your html, css, and js files!
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
 def index():
     return FileResponse('static/index.html')
+
 
 
 
